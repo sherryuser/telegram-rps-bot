@@ -1,0 +1,22 @@
+{
+  "name": "Telegram RPS Bot",
+  "description": "A fun Rock Paper Scissors bot for Telegram groups",
+  "keywords": ["telegram", "bot", "rock-paper-scissors", "python"],
+  "env": {
+    "BOT_TOKEN": {
+      "description": "Your Telegram Bot Token from @BotFather",
+      "required": true
+    }
+  },
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "free"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ]
+} 
