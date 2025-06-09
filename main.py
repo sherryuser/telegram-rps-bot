@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # Get token from environment variable
-SKIP_ADMINS = False  # Set to True if you want to exclude admins from selection
+SKIP_ADMINS = True  # Set to True if you want to exclude admins from selection
 
 # Fun messages for announcing the loser
 LOSER_MESSAGES = [
