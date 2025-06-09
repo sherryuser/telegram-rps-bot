@@ -16,7 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configuration
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8149948815:AAHH2uQksdYKnBGMqe-GnAm7a9mKV0P4TV8")  # Use environment variable in production
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Get token from environment variable
 SKIP_ADMINS = False  # Set to True if you want to exclude admins from selection
 
 # Fun messages for announcing the loser
@@ -213,9 +213,10 @@ class RPSBot:
 
 async def main():
     """Main function to run the bot"""
-    if BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
-        print("❌ Please set your bot token in the BOT_TOKEN variable!")
+    if not BOT_TOKEN:
+        print("❌ Please set your bot token in the BOT_TOKEN environment variable!")
         print("You can get a token from @BotFather on Telegram")
+        print("Set it using: export BOT_TOKEN='your_token_here'")
         return
     
     bot = RPSBot(BOT_TOKEN)
