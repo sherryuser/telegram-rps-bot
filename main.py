@@ -159,17 +159,26 @@ class RPSBot:
         query = update.callback_query
         user = query.from_user
         
+        # Always acknowledge the callback query first
+        await query.answer()
+        
         if query.data.startswith("join_"):
             chat_id = int(query.data.split("_")[1])
             
             # Check if game is still active
             if chat_id not in self.active_games:
-                await query.answer("❌ This game has ended!", show_alert=True)
+                await query.edit_message_text(
+                    "❌ This game has ended! Use /rps to start a new game.",
+                    parse_mode='Markdown'
+                )
                 return
             
             # Check if game time is up
             if datetime.now() > self.active_games[chat_id]['end_time']:
-                await query.answer("⏰ Time's up! Game has ended.", show_alert=True)
+                await query.edit_message_text(
+                    "⏰ Time's up! This game has ended. Use /rps to start a new game.",
+                    parse_mode='Markdown'
+                )
                 return
             
             # Add participant
@@ -177,13 +186,18 @@ class RPSBot:
                 self.active_games[chat_id]['participants'].add(user.id)
                 participants_count = len(self.active_games[chat_id]['participants'])
                 
-                await query.answer(
-                    f"🎮 You joined the game! Total players: {participants_count}",
-                    show_alert=False
+                # Send a confirmation message in the chat
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"🎮 {user.first_name} joined the game! Total players: {participants_count}"
                 )
                 logger.info(f"User {user.full_name} joined RPS game in chat {chat_id}")
             else:
-                await query.answer("✅ You're already in the game!", show_alert=False)
+                # Send a message that they're already in
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"✅ {user.first_name}, you're already in the game!"
+                )
     
     async def handle_reply(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle replies to game messages"""
