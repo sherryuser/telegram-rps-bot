@@ -4,10 +4,14 @@ import random
 import os
 from datetime import datetime, timedelta
 from typing import Dict, Set
+from dotenv import load_dotenv
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from telegram.constants import ChatType
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -150,54 +154,71 @@ class RPSBot:
         
         logger.info(f"RPS game started in chat {chat.id} by {user.full_name}")
         
-        # Schedule game end
-        await asyncio.sleep(GAME_DURATION)
-        await self.end_game(chat.id, context)
+        # Schedule game end using a task (non-blocking)
+        asyncio.create_task(self.schedule_game_end(chat.id, context))
     
     async def button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle button clicks"""
         query = update.callback_query
         user = query.from_user
         
-        # Always acknowledge the callback query first
-        await query.answer()
+        logger.info(f"Button clicked by {user.full_name}, callback_data: {query.data}")
         
-        if query.data.startswith("join_"):
-            chat_id = int(query.data.split("_")[1])
-            
-            # Check if game is still active
-            if chat_id not in self.active_games:
-                await query.edit_message_text(
-                    "❌ This game has ended! Use /rps to start a new game.",
-                    parse_mode='Markdown'
-                )
-                return
-            
-            # Check if game time is up
-            if datetime.now() > self.active_games[chat_id]['end_time']:
-                await query.edit_message_text(
-                    "⏰ Time's up! This game has ended. Use /rps to start a new game.",
-                    parse_mode='Markdown'
-                )
-                return
-            
-            # Add participant
-            if user.id not in self.active_games[chat_id]['participants']:
-                self.active_games[chat_id]['participants'].add(user.id)
-                participants_count = len(self.active_games[chat_id]['participants'])
+        # Always acknowledge the callback query first (with error handling)
+        try:
+            await query.answer()
+        except Exception as e:
+            logger.warning(f"Failed to answer callback query: {e}")
+            # Continue anyway, the main logic should still work
+        
+        try:
+            if query.data.startswith("join_"):
+                chat_id = int(query.data.split("_")[1])
+                logger.info(f"Processing join request for chat {chat_id} from user {user.full_name}")
                 
-                # Send a confirmation message in the chat
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=f"🎮 {user.first_name} joined the game! Total players: {participants_count}"
-                )
-                logger.info(f"User {user.full_name} joined RPS game in chat {chat_id}")
-            else:
-                # Send a message that they're already in
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=f"✅ {user.first_name}, you're already in the game!"
-                )
+                # Check if game is still active
+                if chat_id not in self.active_games:
+                    logger.warning(f"No active game found for chat {chat_id}")
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text="❌ This game has ended! Use /rps to start a new game."
+                    )
+                    return
+                
+                # Check if game time is up
+                if datetime.now() > self.active_games[chat_id]['end_time']:
+                    logger.info(f"Game in chat {chat_id} has expired")
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text="⏰ Time's up! This game has ended. Use /rps to start a new game."
+                    )
+                    return
+                
+                # Add participant
+                if user.id not in self.active_games[chat_id]['participants']:
+                    self.active_games[chat_id]['participants'].add(user.id)
+                    participants_count = len(self.active_games[chat_id]['participants'])
+                    
+                    # Send a confirmation message in the chat
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=f"🎮 {user.first_name} joined the game! Total players: {participants_count}"
+                    )
+                    logger.info(f"User {user.full_name} successfully joined RPS game in chat {chat_id}")
+                else:
+                    # Send a message that they're already in
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=f"✅ {user.first_name}, you're already in the game!"
+                    )
+                    logger.info(f"User {user.full_name} tried to join again in chat {chat_id}")
+        
+        except Exception as e:
+            logger.error(f"Error in button_callback: {e}")
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
+                text="❌ Something went wrong! Please try again or use /rps to start a new game."
+            )
     
     async def handle_reply(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle replies to game messages"""
@@ -227,6 +248,11 @@ class RPSBot:
                 f"{confirmation}\n🎯 Players in game: {participants_count}"
             )
             logger.info(f"User {user.full_name} joined RPS game in chat {chat.id} via reply")
+    
+    async def schedule_game_end(self, chat_id: int, context: ContextTypes.DEFAULT_TYPE):
+        """Schedule game end after duration (non-blocking)"""
+        await asyncio.sleep(GAME_DURATION)
+        await self.end_game(chat_id, context)
     
     async def end_game(self, chat_id: int, context: ContextTypes.DEFAULT_TYPE):
         """End the game and announce winner"""
