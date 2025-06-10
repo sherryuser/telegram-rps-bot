@@ -4,14 +4,18 @@ import random
 import os
 from datetime import datetime, timedelta
 from typing import Dict, Set
-from dotenv import load_dotenv
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from telegram.constants import ChatType
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file (for local development)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv not available, probably in production - that's fine
+    pass
 
 # Configure logging
 logging.basicConfig(
